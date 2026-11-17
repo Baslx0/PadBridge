@@ -33,7 +33,7 @@ impl DeviceProfiles {
     pub fn active_mut(&mut self) -> &mut Profile {
         &mut self.profiles[self.active]
     }
-    fn valid(&self) -> bool {
+    pub fn valid(&self) -> bool {
         !self.profiles.is_empty()
             && self.active < self.profiles.len()
             && self

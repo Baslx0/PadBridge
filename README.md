@@ -14,3 +14,7 @@ PadBridge v0.2.0 preview is a local Windows controller monitor built with Rust, 
 Discovery is limited to gilrs. Paired Bluetooth devices that are not usable gamepads are not listed. A device's gilrs UUID may identify a model rather than a unique physical unit, so identical controllers can share a profile. Battery values are shown only when gilrs reports them. Xbox virtual output, game remapping, native Windows inventory, and vendor features are unavailable. No driver is installed.
 
 Run with `cargo run`; release build with `cargo build --release`. Windows 11 and a Rust toolchain with MSVC build tools are required. See [architecture](docs/ARCHITECTURE.md), [features](docs/FEATURES.md), [QA](docs/QA.md), and [security](docs/SECURITY.md).
+
+## Interface update
+
+The controller list is now the starting point. Select a device, open its focused input tester, or edit its local profile. The tester shows stick position, deadzone circles, trigger levels, and live buttons. The selected controller remains in focus across pages while connected. Empty and initialization-error states explain what the app can detect. Profile changes remain display-only.
