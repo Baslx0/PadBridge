@@ -53,25 +53,25 @@ pub fn stick(ui: &mut egui::Ui, label: &str, x: f32, y: f32, mapping: &Mapping, 
         let center = rect.center();
         let radius = 58.0;
         let painter = ui.painter();
-        painter.circle_stroke(center, radius, Stroke::new(1.5, MUTED));
+        painter.circle_stroke(center, radius, Stroke::new(1.5_f32, MUTED));
         painter.circle_stroke(
             center,
             radius * mapping.deadzone,
-            Stroke::new(1.0, Color32::from_rgb(90, 106, 128)),
+            Stroke::new(1.0_f32, Color32::from_rgb(90, 106, 128)),
         );
         painter.line_segment(
             [
                 Pos2::new(center.x - radius, center.y),
                 Pos2::new(center.x + radius, center.y),
             ],
-            Stroke::new(1.0, Color32::from_rgb(61, 72, 89)),
+            Stroke::new(1.0_f32, Color32::from_rgb(61, 72, 89)),
         );
         painter.line_segment(
             [
                 Pos2::new(center.x, center.y - radius),
                 Pos2::new(center.x, center.y + radius),
             ],
-            Stroke::new(1.0, Color32::from_rgb(61, 72, 89)),
+            Stroke::new(1.0_f32, Color32::from_rgb(61, 72, 89)),
         );
         let px = center.x + mapping.axis(x, false) * radius;
         let py = center.y - mapping.axis(y, invert_y) * radius;
@@ -144,13 +144,13 @@ fn layout_button(p: &egui::Painter, center: Pos2, radius: f32, active: bool) {
     p.circle_stroke(
         center,
         radius,
-        Stroke::new(2.0, if active { GREEN } else { MUTED }),
+        Stroke::new(2.0_f32, if active { GREEN } else { MUTED }),
     );
 }
 
 fn face_symbol(p: &egui::Painter, center: Pos2, radius: f32, symbol: usize, color: Color32) {
     let r = radius * 0.42;
-    let line = Stroke::new(2.0, color);
+    let line = Stroke::new(2.0_f32, color);
     match symbol {
         0 => {
             let a = Pos2::new(center.x, center.y - r);
@@ -344,7 +344,7 @@ pub fn controller_layout(
     ] {
         let center = at(x, y);
         p.circle_filled(center, 33.0 * scale, Color32::from_rgb(29, 37, 49));
-        p.circle_stroke(center, 33.0 * scale, Stroke::new(2.0, MUTED));
+        p.circle_stroke(center, 33.0 * scale, Stroke::new(2.0_f32, MUTED));
         let dot = Pos2::new(
             center.x + mapping.axis(ax, false) * 20.0 * scale,
             center.y - mapping.axis(ay, invert) * 20.0 * scale,
