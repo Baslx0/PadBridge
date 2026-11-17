@@ -1,15 +1,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod core;
+mod output;
 mod sony;
 mod ui;
 
 use core::{
     mapping::Mapping,
     profiles::{Profile, Store},
-    OutputBackend, UnsupportedOutput,
 };
 use eframe::egui::{self, Color32, RichText};
 use gilrs::{Axis, Gilrs, PowerInfo};
+use output::XboxOutput;
 use sony::SonyBackend;
 use std::{path::PathBuf, time::Duration};
 
@@ -58,7 +59,7 @@ struct App {
     notice: Option<String>,
     page: Page,
     selected: Option<String>,
-    output: UnsupportedOutput,
+    output: XboxOutput,
 }
 impl Default for App {
     fn default() -> Self {
@@ -77,7 +78,7 @@ impl Default for App {
             notice,
             page: Page::Dashboard,
             selected: None,
-            output: UnsupportedOutput,
+            output: XboxOutput::new(),
         }
     }
 }
@@ -162,11 +163,33 @@ impl App {
     fn dashboard(&mut self, ui: &mut egui::Ui, keys: &[String]) {
         ui::surface(ui, |ui| {
             ui.label(
-                RichText::new("Game output unavailable")
-                    .strong()
-                    .color(Color32::YELLOW),
+                RichText::new(if self.output.active() {
+                    "Virtual Xbox controller active"
+                } else {
+                    "Virtual Xbox controller off"
+                })
+                .strong()
+                .color(if self.output.active() {
+                    ui::GREEN
+                } else {
+                    Color32::YELLOW
+                }),
             );
-            ui.label(RichText::new("PadBridge monitors controller input but does not create a virtual controller for games.").color(ui::MUTED));
+            ui.label(RichText::new("Select a Sony controller, then enable Xbox output for games that need XInput. ViGEmBus is required.").color(ui::MUTED));
+            if self.output.active() {
+                if ui.button("Stop Xbox output").clicked() {
+                    self.output.stop();
+                }
+            } else if self
+                .current_key(keys)
+                .is_some_and(|key| self.sony.devices.contains_key(&key))
+                && ui.button("Start Xbox output").clicked()
+            {
+                self.output.start();
+            }
+            if let Some(error) = &self.output.error {
+                ui.colored_label(Color32::LIGHT_RED, error);
+            }
         });
         ui.add_space(10.0);
         if keys.is_empty() {
@@ -437,8 +460,10 @@ impl App {
         }
         ui.add_space(12.0);
         ui.label(
-            RichText::new("Game remapping and virtual Xbox output are unavailable.")
-                .color(ui::MUTED),
+            RichText::new(
+                "Profile mapping affects the tester only; Xbox output uses raw Sony input.",
+            )
+            .color(ui::MUTED),
         );
     }
     fn settings(&mut self, ui: &mut egui::Ui) {
@@ -459,21 +484,21 @@ impl App {
         });
         ui::section(ui, "Game compatibility");
         ui::surface(ui, |ui| {
-            ui.label("PadBridge does not send controller input to games.");
-            ui.label(RichText::new("Games can use a controller directly when they support it. For games needing Xbox input, Steam Input may help when the game is launched through Steam; non-Steam launchers vary.").color(ui::MUTED));
+            ui.label("Virtual Xbox output is available for Sony HID controllers when ViGEmBus is installed.");
+            ui.label(RichText::new("Select the Sony controller on the Controllers page and start Xbox output. Steam Input remains another option.").color(ui::MUTED));
         });
         ui::section(ui, "Output");
         ui::surface(ui, |ui| {
             ui.label(format!(
                 "Virtual Xbox controller: {}",
-                if self.output.available() {
-                    "Available"
+                if self.output.active() {
+                    "Active"
                 } else {
-                    "Unavailable"
+                    "Off"
                 }
             ));
             ui.label(
-                RichText::new("No driver download or installation. No telemetry or cloud account.")
+                RichText::new("Requires a separately installed ViGEmBus driver. No automatic driver installation.")
                     .color(ui::MUTED),
             );
         });
@@ -492,6 +517,19 @@ impl eframe::App for App {
         }
         self.sony.poll();
         let keys = self.connected();
+        if self.output.active() {
+            let input = self
+                .current_key(&keys)
+                .and_then(|key| self.sony.devices.get(&key));
+            if let Some(device) =
+                input.filter(|device| device.last_report.elapsed() < Duration::from_millis(250))
+            {
+                self.output.update(&device.input);
+            } else {
+                self.output.stop();
+                self.output.error = Some("Xbox output stopped: selected Sony controller disconnected or input timed out.".into());
+            }
+        }
         self.navigation(ctx, keys.len());
         egui::CentralPanel::default()
             .frame(

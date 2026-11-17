@@ -22,3 +22,7 @@ Windows exposed a present DualSense HID interface and valid input reports while 
 ## 2026-11-17 — GTA V Bluetooth output
 
 PadBridge remains input-only. Steam Input is a user-controlled workaround for non-Steam games but separate Epic/Rockstar launchers can prevent its overlay from attaching. Do not claim game compatibility from tester detection. The LuminalVGBus fork says its driver is unsigned and has never been loaded, so it is not integrated. See GAME_COMPATIBILITY.md.
+
+## 2026-11-17 — Optional ViGEmBus output
+
+Add opt-in virtual Xbox 360 output for selected Sony HID input through the established ViGEmBus client API. The driver must be installed separately from the original Nefarius release; PadBridge does not install it. The backend unplugs the virtual target on stop or stale input. This supersedes the earlier input-only decision, but game compatibility remains unverified until tested with a real driver and GTA V.

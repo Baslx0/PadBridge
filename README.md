@@ -16,8 +16,8 @@ Use `cargo run` or `cargo build --release` on Windows 11 with the Rust MSVC tool
 
 ## Limitations
 
-Sony HID support covers official Sony vendor ID `054C` with DualSense (`0CE6`), DualSense Edge (`0DF2`), and DualShock 4 (`05C4`, `09CC`) report layouts. The connected DualSense Bluetooth controller was detected locally; PS4 and USB paths have parser tests but still need hardware verification. Other vendors remain limited to gilrs. No game remapping, Xbox emulation, driver installation, Bluetooth pairing, or reliable per-unit identity for gilrs-only identical controllers. No cloud account or telemetry.
+Sony HID support covers official Sony vendor ID `054C` with DualSense (`0CE6`), DualSense Edge (`0DF2`), and DualShock 4 (`05C4`, `09CC`) report layouts. The connected DualSense Bluetooth controller was detected locally; PS4 and USB paths have parser tests but still need hardware verification. Other vendors remain limited to gilrs. Virtual Xbox output requires ViGEmBus installed separately and has not yet been tested with the driver or a game on this PC. No game remapping, driver installation, Bluetooth pairing, or reliable per-unit identity for gilrs-only identical controllers. No cloud account or telemetry.
 
 See [architecture](docs/ARCHITECTURE.md), [features](docs/FEATURES.md), [QA](docs/QA.md), and [security](docs/SECURITY.md).
 
-Game use: PadBridge does not create virtual output. For GTA V through Epic/Rockstar over Bluetooth, see [game compatibility](docs/GAME_COMPATIBILITY.md) for a Steam Input workaround and its limits.
+Game use: PadBridge can create virtual Xbox 360 output from Sony HID input when ViGEmBus is installed separately. For GTA V through Epic/Rockstar over Bluetooth, see [game compatibility](docs/GAME_COMPATIBILITY.md) for setup and limits.
