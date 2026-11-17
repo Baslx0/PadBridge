@@ -16,7 +16,7 @@ use std::{
 pub struct Input {
     pub axes: [f32; 4],
     pub triggers: [f32; 2],
-    pub buttons: [bool; 14],
+    pub buttons: [bool; 16],
 }
 impl Input {
     pub fn pressed(&self, button: Button) -> bool {
@@ -34,6 +34,8 @@ impl Input {
             Button::DPadLeft => 10,
             Button::DPadRight => 11,
             Button::Mode => 12,
+            Button::LeftThumb => 14,
+            Button::RightThumb => 15,
             _ => return false,
         };
         self.buttons[index]
@@ -78,6 +80,8 @@ pub fn parse(pid: u16, data: &[u8]) -> Option<Input> {
         matches!(hat, 1..=3),
         b2 & 0x01 != 0,
         b2 & 0x02 != 0,
+        b1 & 0x40 != 0,
+        b1 & 0x80 != 0,
     ];
     Some(Input {
         axes: [
@@ -353,6 +357,18 @@ mod tests {
         let state = parse(0x0ce6, &bytes).unwrap();
         assert!(state.buttons[13]);
         assert!(state.pressed(Button::DPadUp));
+    }
+    #[test]
+    fn stick_clicks_in_dualsense_and_dualshock_reports() {
+        let dualsense = [1, 128, 128, 128, 128, 0, 0x40, 0, 0, 0];
+        let state = parse(0x0ce6, &dualsense).unwrap();
+        assert!(state.pressed(Button::LeftThumb));
+        assert!(!state.pressed(Button::RightThumb));
+
+        let dualshock = [1, 128, 128, 128, 128, 0, 0x80, 0, 0, 0];
+        let state = parse(0x09cc, &dualshock).unwrap();
+        assert!(!state.pressed(Button::LeftThumb));
+        assert!(state.pressed(Button::RightThumb));
     }
     #[test]
     fn unsupported_report_rejected() {

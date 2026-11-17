@@ -368,6 +368,8 @@ fn report(input: &Input) -> Xbox360Input {
         (10, 0x0004),
         (11, 0x0008),
         (12, 0x0400),
+        (14, 0x0040),
+        (15, 0x0080),
     ] {
         if input.buttons[index] {
             buttons |= flag;
@@ -412,14 +414,16 @@ mod tests {
         let mut input = Input {
             axes: [-1.0, 1.0, 0.5, -0.5],
             triggers: [1.0, 0.25],
-            buttons: [false; 14],
+            buttons: [false; 16],
         };
         input.buttons[2] = true;
         input.buttons[4] = true;
         input.buttons[8] = true;
         input.buttons[13] = true;
+        input.buttons[14] = true;
+        input.buttons[15] = true;
         let xbox = report(&input);
-        assert_eq!(xbox.buttons, 0x1101);
+        assert_eq!(xbox.buttons, 0x11c1);
         assert_eq!((xbox.lt, xbox.rt), (255, 63));
         assert_eq!(
             (xbox.lx, xbox.ly, xbox.rx, xbox.ry),
