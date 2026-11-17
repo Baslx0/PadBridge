@@ -1,22 +1,5 @@
 # Architecture
 
-## v0.1
+`src/main.rs` owns the egui application and gilrs adapter. `src/core/mapping.rs` contains pure display transforms. `src/core/profiles.rs` owns versioned local JSON storage and validation. `src/core/mod.rs` defines the output boundary; its only current implementation reports unavailable and releases no resources.
 
-- Rust 2021 application.
-- `eframe/egui` native desktop UI.
-- `gilrs` gamepad enumeration, normalized buttons/axes and power information.
-- Device input is polled by the UI every 50 ms. No file storage or external services.
-
-## Boundary and limitations
-
-Enumerating all Bluetooth devices is different from enumerating input-compatible gamepads. v0.1 only lists gamepads recognized by gilrs. Power information is backend-dependent and may be absent even when Windows shows a battery indicator. Xbox emulation requires a separately evaluated driver and is not implemented.
-
-## Proposed modules (future)
-
-- `discovery`: Windows HID, XInput, Windows.Gaming.Input, BLE metadata.
-- `capabilities`: per-device reports for battery, buttons, axes, rumble.
-- `profiles`: local per-device settings.
-- `output`: optional and explicitly enabled virtual controller.
-- `ui`: controller dashboard.
-
-No service or driver is installed by the app.
+The UI drains gilrs events every 50 ms and reads the current state. This preserves v0.1 behavior, but hardware polling is still on the UI thread. Native Windows discovery, stable per-unit identity, background input collection, and deduplication remain future work. Model UUID plus device name forms the profile key, which can be shared by identical units.
