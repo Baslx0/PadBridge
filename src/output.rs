@@ -2,43 +2,47 @@ use crate::sony::Input;
 use sha2::{Digest, Sha256};
 use std::{
     fs,
-    io::Read,
     path::PathBuf,
-    sync::mpsc::{self, Receiver},
-    thread,
+    sync::mpsc::{self, Receiver, Sender},
+    thread::{self, JoinHandle},
     time::Duration,
 };
 use vigem_client::{Client, TargetId, XButtons, XGamepad, Xbox360Wired};
 
-const DRIVER_URL: &str = "https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe";
 const DRIVER_NAME: &str = "ViGEmBus_1.22.0_x64_x86_arm64.exe";
 const DRIVER_SHA256: &str = "89220a7865076b342892f98865f3499fb7c4cfd673159e89d352c360fd014c6a";
-const MAX_DRIVER_BYTES: u64 = 16 * 1024 * 1024;
+const DRIVER: &[u8] = include_bytes!("../third_party/ViGEmBus/ViGEmBus_1.22.0_x64_x86_arm64.exe");
 
 pub struct XboxOutput {
-    target: Option<Xbox360Wired<Client>>,
+    worker: Option<JoinHandle<()>>,
+    stop: Option<Sender<()>>,
+    status: Option<Receiver<String>>,
     pub error: Option<String>,
     download: Option<Receiver<Result<PathBuf, String>>>,
     pub installer: Option<PathBuf>,
+    pub slot: Option<u32>,
 }
 
 impl XboxOutput {
     pub fn new() -> Self {
         Self {
-            target: None,
+            worker: None,
+            stop: None,
+            status: None,
             error: None,
             download: None,
             installer: None,
+            slot: None,
         }
     }
 
     pub fn active(&self) -> bool {
-        self.target.is_some()
+        self.worker.is_some()
     }
 
-    pub fn start(&mut self) {
+    pub fn start(&mut self) -> Option<Sender<Input>> {
         if self.active() {
-            return;
+            return None;
         }
         self.error = None;
         let result = (|| {
@@ -49,28 +53,77 @@ impl XboxOutput {
             Ok::<_, vigem_client::Error>(target)
         })();
         match result {
-            Ok(target) => self.target = Some(target),
+            Ok(mut target) => {
+                self.slot = target.get_user_index().ok();
+                let (tx, rx) = mpsc::channel();
+                let (stop, stop_rx) = mpsc::channel();
+                let (status_tx, status_rx) = mpsc::channel();
+                self.stop = Some(stop);
+                self.status = Some(status_rx);
+                self.worker = Some(thread::spawn(move || {
+                    let mut first = true;
+                    loop {
+                        if stop_rx.try_recv().is_ok() {
+                            break;
+                        }
+                        let timeout = if first {
+                            Duration::from_secs(2)
+                        } else {
+                            Duration::from_secs(1)
+                        };
+                        match rx.recv_timeout(timeout) {
+                            Ok(input) => {
+                                first = false;
+                                if let Err(error) = target.update(&report(&input)) {
+                                    let _ = status_tx
+                                        .send(format!("Virtual Xbox update failed: {error:?}"));
+                                    break;
+                                }
+                            }
+                            Err(_) => {
+                                let _ = status_tx
+                                    .send("Xbox output stopped: Sony input timed out.".into());
+                                break;
+                            }
+                        }
+                    }
+                }));
+                return Some(tx);
+            }
             Err(vigem_client::Error::BusNotFound) => {
-                self.error = Some(
-                    "ViGEmBus is missing. Downloading the verified installer from Nefarius.".into(),
-                );
+                self.error =
+                    Some("ViGEmBus is missing. Preparing the bundled verified installer.".into());
                 self.download_driver();
             }
             Err(error) => {
                 self.error = Some(format!("Virtual Xbox controller unavailable: {error:?}"))
             }
         }
+        None
     }
 
     pub fn stop(&mut self) {
-        self.target = None;
+        if let Some(stop) = self.stop.take() {
+            let _ = stop.send(());
+        }
+        if let Some(worker) = self.worker.take() {
+            let _ = worker.join();
+        }
+        self.status = None;
+        self.slot = None;
     }
 
     pub fn downloading(&self) -> bool {
         self.download.is_some()
     }
 
-    pub fn poll_download(&mut self) {
+    pub fn poll(&mut self) {
+        if let Some(status) = &self.status {
+            if let Ok(message) = status.try_recv() {
+                self.error = Some(message);
+                self.stop();
+            }
+        }
         let Some(receiver) = &self.download else {
             return;
         };
@@ -78,7 +131,7 @@ impl XboxOutput {
             self.download = None;
             match result {
                 Ok(path) => {
-                    self.error = Some("Verified ViGEmBus installer downloaded. Open it to install the driver, then retry Xbox output.".into());
+                    self.error = Some("Bundled ViGEmBus installer is ready. Open it to install the driver, then retry Xbox output.".into());
                     self.installer = Some(path);
                 }
                 Err(error) => self.error = Some(format!("Driver download failed: {error}")),
@@ -95,15 +148,6 @@ impl XboxOutput {
         thread::spawn(move || {
             let _ = tx.send(fetch_driver());
         });
-    }
-
-    pub fn update(&mut self, input: &Input) {
-        if let Some(target) = self.target.as_mut() {
-            if let Err(error) = target.update(&report(input)) {
-                self.error = Some(format!("Virtual Xbox update failed: {error:?}"));
-                self.stop();
-            }
-        }
     }
 }
 
@@ -122,32 +166,11 @@ fn fetch_driver() -> Result<PathBuf, String> {
         }
         fs::remove_file(&path).map_err(|e| e.to_string())?;
     }
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(60))
-        .build()
-        .map_err(|e| e.to_string())?;
-    let response = client
-        .get(DRIVER_URL)
-        .send()
-        .map_err(|e| e.to_string())?
-        .error_for_status()
-        .map_err(|e| e.to_string())?;
-    if response
-        .content_length()
-        .is_some_and(|size| size > MAX_DRIVER_BYTES)
-    {
-        return Err("Installer exceeds maximum expected size".into());
-    }
-    let mut bytes = Vec::new();
-    response
-        .take(MAX_DRIVER_BYTES + 1)
-        .read_to_end(&mut bytes)
-        .map_err(|e| e.to_string())?;
-    if bytes.len() as u64 > MAX_DRIVER_BYTES || !verified(&bytes) {
-        return Err("Installer SHA-256 did not match the pinned official release".into());
+    if !verified(DRIVER) {
+        return Err("Bundled installer SHA-256 did not match the pinned official release".into());
     }
     let temporary = directory.join(format!("{DRIVER_NAME}.partial"));
-    fs::write(&temporary, bytes).map_err(|e| e.to_string())?;
+    fs::write(&temporary, DRIVER).map_err(|e| e.to_string())?;
     fs::rename(&temporary, &path).map_err(|e| e.to_string())?;
     Ok(path)
 }

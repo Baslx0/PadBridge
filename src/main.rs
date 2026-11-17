@@ -177,7 +177,11 @@ impl App {
             );
             ui.label(RichText::new("Select a Sony controller, then enable Xbox output for games that need XInput. ViGEmBus is required.").color(ui::MUTED));
             if self.output.active() {
+                if let Some(slot) = self.output.slot {
+                    ui.label(format!("XInput slot {slot}"));
+                }
                 if ui.button("Stop Xbox output").clicked() {
+                    self.sony.set_output(None);
                     self.output.stop();
                 }
             } else if self
@@ -185,7 +189,10 @@ impl App {
                 .is_some_and(|key| self.sony.devices.contains_key(&key))
                 && ui.button("Start Xbox output").clicked()
             {
-                self.output.start();
+                let key = self.current_key(keys).expect("selected Sony key exists");
+                if let Some(sender) = self.output.start() {
+                    self.sony.set_output(Some((key, sender)));
+                }
             }
             if let Some(error) = &self.output.error {
                 ui.colored_label(Color32::LIGHT_RED, error);
@@ -508,7 +515,7 @@ impl App {
                 }
             ));
             ui.label(
-                RichText::new("If ViGEmBus is missing, PadBridge downloads its verified installer. Installation requires your action.")
+                RichText::new("If ViGEmBus is missing, PadBridge prepares its bundled installer. Installation requires your action.")
                     .color(ui::MUTED),
             );
         });
@@ -516,6 +523,7 @@ impl App {
 }
 impl Drop for App {
     fn drop(&mut self) {
+        self.sony.set_output(None);
         self.output.stop();
     }
 }
@@ -526,21 +534,11 @@ impl eframe::App for App {
             while g.next_event().is_some() {}
         }
         self.sony.poll();
-        self.output.poll_download();
-        let keys = self.connected();
-        if self.output.active() {
-            let input = self
-                .current_key(&keys)
-                .and_then(|key| self.sony.devices.get(&key));
-            if let Some(device) =
-                input.filter(|device| device.last_report.elapsed() < Duration::from_millis(250))
-            {
-                self.output.update(&device.input);
-            } else {
-                self.output.stop();
-                self.output.error = Some("Xbox output stopped: selected Sony controller disconnected or input timed out.".into());
-            }
+        self.output.poll();
+        if !self.output.active() {
+            self.sony.set_output(None);
         }
+        let keys = self.connected();
         self.navigation(ctx, keys.len());
         egui::CentralPanel::default()
             .frame(

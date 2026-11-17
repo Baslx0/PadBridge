@@ -30,3 +30,7 @@ Add opt-in virtual Xbox 360 output for selected Sony HID input through the estab
 ## 2026-11-17 — Verified driver download
 
 On a ViGEmBus `BusNotFound` error, download the original Nefarius 1.22.0 installer in a background thread to the user's local app data. Pin the release asset URL and SHA-256 (`89220a7865076b342892f98865f3499fb7c4cfd673159e89d352c360fd014c6a`), reject oversized or mismatched downloads, and expose a separate button to run the verified installer. The downloaded file's Authenticode signature was valid with Nefarius as signer during development. PadBridge never silently installs a kernel driver.
+
+## 2026-11-17 — Bundled installer and independent output thread
+
+Embed the unmodified signed ViGEmBus 1.22.0 setup in the PadBridge executable, with its BSD-3-Clause notice. Verify its pinned SHA-256 before extracting it when the bus is missing. This replaces the runtime download while still requiring a user to start Windows installation. Move virtual Xbox updates onto a dedicated thread fed directly from the Sony HID reader; window focus and UI repaint frequency must not interrupt game input. Show the assigned XInput slot for diagnosis. VIIPER was reviewed, but Windows still needs the signed `usbip-win2` kernel driver and its main project uses GPL-3.0.

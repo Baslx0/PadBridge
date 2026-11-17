@@ -4,7 +4,10 @@ use gilrs::Button;
 use hidapi::{DeviceInfo, HidApi, HidDevice};
 use std::{
     collections::{HashMap, HashSet},
-    sync::mpsc::{self, Receiver, Sender},
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        Arc, Mutex,
+    },
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
@@ -121,7 +124,9 @@ struct OpenDevice {
     last_emit: Instant,
 }
 
-fn worker(rx_stop: Receiver<()>, tx: Sender<Event>) {
+type OutputRoute = Arc<Mutex<Option<(String, Sender<Input>)>>>;
+
+fn worker(rx_stop: Receiver<()>, tx: Sender<Event>, output: OutputRoute) {
     let mut api = match HidApi::new() {
         Ok(api) => api,
         Err(e) => {
@@ -200,6 +205,13 @@ fn worker(rx_stop: Receiver<()>, tx: Sender<Event>) {
                 Ok(n) if n > 0 => {
                     if let Some(input) = parse(d.pid, &data[..n]) {
                         if d.last_emit.elapsed() >= Duration::from_millis(40) {
+                            if let Ok(route) = output.lock() {
+                                if let Some((key, sender)) = route.as_ref() {
+                                    if *key == d.key {
+                                        let _ = sender.send(input.clone());
+                                    }
+                                }
+                            }
                             let _ = tx.send(Event::Report(Device {
                                 key: d.key.clone(),
                                 name: d.name.clone(),
@@ -229,14 +241,17 @@ pub struct SonyBackend {
     join: Option<JoinHandle<()>>,
     pub devices: HashMap<String, Device>,
     pub error: Option<String>,
+    output: OutputRoute,
 }
 impl SonyBackend {
     pub fn new() -> Self {
         let (tx, rx) = mpsc::channel();
         let (stop, rx_stop) = mpsc::channel();
+        let output: OutputRoute = Arc::new(Mutex::new(None));
+        let worker_output = output.clone();
         let join = thread::Builder::new()
             .name("sony-hid".into())
-            .spawn(move || worker(rx_stop, tx))
+            .spawn(move || worker(rx_stop, tx, worker_output))
             .ok();
         Self {
             rx,
@@ -244,6 +259,12 @@ impl SonyBackend {
             join,
             devices: HashMap::new(),
             error: None,
+            output,
+        }
+    }
+    pub fn set_output(&mut self, route: Option<(String, Sender<Input>)>) {
+        if let Ok(mut output) = self.output.lock() {
+            *output = route;
         }
     }
     pub fn poll(&mut self) {
