@@ -17,8 +17,8 @@ PadBridge is a local-first, open-source controller inspector for Windows, writte
 Install the official Rust toolchain from https://rustup.rs and Microsoft C++ Build Tools.
 
 ```powershell
-git clone https://github.com/Baslx0/Controller.PC.git
-cd Controller.PC
+git clone https://github.com/Baslx0/PadBridge.git
+cd PadBridge
 git switch develop
 cargo run
 ```
