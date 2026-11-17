@@ -1,24 +1,5 @@
-# QA gates
+# QA
 
-## Not yet verified
-- [ ] `cargo fmt --all -- --check`
-- [ ] `cargo check` on Windows
-- [ ] `cargo clippy --all-targets -- -D warnings`
-- [ ] DualSense wired and wireless smoke tests
-- [ ] GameSir Bluetooth mode smoke tests
-- [ ] Button and axis tester accuracy
-- [ ] Battery reporting: accurate or Unavailable
-- [ ] No network requests / unapproved install behaviors
+Automated gates: `cargo fmt --all -- --check`, `cargo check`, `cargo clippy --all-targets -- -D warnings`, `cargo test`, `cargo build --release`.
 
-## Manual functional tests
-
-1. Run on Windows with no controller: see empty-state guidance.
-2. Connect DualSense through USB: verify name and button/axis motion.
-3. Connect DualSense through Bluetooth: verify behavior, note battery accuracy.
-4. Connect GameSir through Bluetooth: record exact model, current pairing mode, and whether the device appears.
-5. Disconnect each controller while the app is running; verify the list updates.
-6. Confirm no admin prompt or additional driver installation.
-
-## Release policy
-
-Do not tag a stable release until Windows build, functional tests and security review pass.
+Manual Windows hardware tests still required: no pad; one and multiple pads; USB and Bluetooth reconnect; DualSense and GameSir modes; battery unavailable and charging reports; restart with saved profiles; two identical controllers; UI responsiveness under sustained input. Corrupt profile recovery is unit-covered only through validation and should be checked in UI. Virtual output cleanup is inapplicable while output is unsupported.

@@ -1,48 +1,16 @@
 # PadBridge
 
-PadBridge is a local-first, open-source controller inspector for Windows, written in **Rust** with **egui** and **gilrs**.
+PadBridge v0.2.0 preview is a local Windows controller monitor built with Rust, egui, and gilrs.
 
-## Preview v0.1
+## Working features
 
-- Detect controllers recognized by Windows through the gilrs backend over supported USB/Bluetooth modes.
-- Live buttons, analog sticks and trigger visualizer.
-- Show charging state and battery percentage **only where the driver reports it**. Otherwise show Unavailable.
-- Adjustable **visualization-only** deadzone.
-- No cloud account, background service, bundled third-party driver or admin privileges.
+- Lists connected, usable gamepads exposed by gilrs and shows live buttons, axes, and device-reported power information.
+- Dark navigation with Dashboard, Tester, Profiles, and Settings.
+- Per-controller local profiles with create, duplicate, rename, select, delete, restore defaults, deadzone, Y inversion, and trigger threshold settings. Tester transformations are display-only.
+- Versioned JSON profiles at `%LOCALAPPDATA%\PadBridge\profiles.json`; invalid files remain untouched and defaults load.
 
-**Limitations:** This is not yet a DS4Windows replacement: no Xbox emulation, actual remapping, Bluetooth pairing or adaptive triggers. Not all generic Bluetooth HID devices are recognized. Specific GameSir models and modes require testing.
+## Limitations
 
-## Run on Windows
+Discovery is limited to gilrs. Paired Bluetooth devices that are not usable gamepads are not listed. A device's gilrs UUID may identify a model rather than a unique physical unit, so identical controllers can share a profile. Battery values are shown only when gilrs reports them. Xbox virtual output, game remapping, native Windows inventory, and vendor features are unavailable. No driver is installed.
 
-Install the official Rust toolchain from https://rustup.rs and Microsoft C++ Build Tools.
-
-```powershell
-git clone https://github.com/Baslx0/PadBridge.git
-cd PadBridge
-git switch develop
-cargo run
-```
-
-For a release build:
-
-```powershell
-cargo build --release
-```
-
-The executable is at `target\release\padbridge.exe`.
-
-## Security
-
-Source code is inspectable. Do not run unofficial prebuilt ZIPs. No elevated permissions or driver installs are performed by PadBridge. Review all dependencies before compiling.
-
-## Roadmap
-
-1. Validate DualSense and GameSir controller modes on real Windows hardware.
-2. Add Windows HID and Bluetooth inventory to detect paired devices that gilrs does not expose as gamepads.
-3. Add platform-specific battery probes with accurate unavailability states.
-4. Local profiles and remapping.
-5. Evaluate optional Xbox virtual controller integration with a maintained and verified driver.
-
-See [architecture](docs/ARCHITECTURE.md), [decisions](docs/DECISIONS.md), and [QA plan](docs/QA.md).
-
-**Status:** Prototype, not yet Windows build-tested or hardware-tested.
+Run with `cargo run`; release build with `cargo build --release`. Windows 11 and a Rust toolchain with MSVC build tools are required. See [architecture](docs/ARCHITECTURE.md), [features](docs/FEATURES.md), [QA](docs/QA.md), and [security](docs/SECURITY.md).
