@@ -160,6 +160,15 @@ impl App {
             });
     }
     fn dashboard(&mut self, ui: &mut egui::Ui, keys: &[String]) {
+        ui::surface(ui, |ui| {
+            ui.label(
+                RichText::new("Game output unavailable")
+                    .strong()
+                    .color(Color32::YELLOW),
+            );
+            ui.label(RichText::new("PadBridge monitors controller input but does not create a virtual controller for games.").color(ui::MUTED));
+        });
+        ui.add_space(10.0);
         if keys.is_empty() {
             ui::empty(
                 ui,
@@ -437,7 +446,7 @@ impl App {
         ui::surface(ui, |ui| {
             ui.label("PadBridge 0.2.0");
             ui.label("Dark theme · 50 ms UI refresh");
-            ui.label("Local controller input through gilrs");
+            ui.label("Local controller input through gilrs and Sony HID");
         });
         ui::section(ui, "Storage");
         ui::surface(ui, |ui| {
@@ -447,6 +456,11 @@ impl App {
                     .monospace()
                     .color(ui::MUTED),
             );
+        });
+        ui::section(ui, "Game compatibility");
+        ui::surface(ui, |ui| {
+            ui.label("PadBridge does not send controller input to games.");
+            ui.label(RichText::new("Games can use a controller directly when they support it. For games needing Xbox input, Steam Input may help when the game is launched through Steam; non-Steam launchers vary.").color(ui::MUTED));
         });
         ui::section(ui, "Output");
         ui::surface(ui, |ui| {
