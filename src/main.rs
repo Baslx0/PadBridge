@@ -190,6 +190,16 @@ impl App {
             if let Some(error) = &self.output.error {
                 ui.colored_label(Color32::LIGHT_RED, error);
             }
+            if self.output.downloading() {
+                ui.spinner();
+            }
+            if let Some(path) = &self.output.installer {
+                if ui.button("Open verified driver installer").clicked() {
+                    if let Err(error) = std::process::Command::new(path).spawn() {
+                        self.output.error = Some(format!("Could not open installer: {error}"));
+                    }
+                }
+            }
         });
         ui.add_space(10.0);
         if keys.is_empty() {
@@ -498,7 +508,7 @@ impl App {
                 }
             ));
             ui.label(
-                RichText::new("Requires a separately installed ViGEmBus driver. No automatic driver installation.")
+                RichText::new("If ViGEmBus is missing, PadBridge downloads its verified installer. Installation requires your action.")
                     .color(ui::MUTED),
             );
         });
@@ -516,6 +526,7 @@ impl eframe::App for App {
             while g.next_event().is_some() {}
         }
         self.sony.poll();
+        self.output.poll_download();
         let keys = self.connected();
         if self.output.active() {
             let input = self

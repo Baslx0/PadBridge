@@ -26,3 +26,7 @@ PadBridge remains input-only. Steam Input is a user-controlled workaround for no
 ## 2026-11-17 — Optional ViGEmBus output
 
 Add opt-in virtual Xbox 360 output for selected Sony HID input through the established ViGEmBus client API. The driver must be installed separately from the original Nefarius release; PadBridge does not install it. The backend unplugs the virtual target on stop or stale input. This supersedes the earlier input-only decision, but game compatibility remains unverified until tested with a real driver and GTA V.
+
+## 2026-11-17 — Verified driver download
+
+On a ViGEmBus `BusNotFound` error, download the original Nefarius 1.22.0 installer in a background thread to the user's local app data. Pin the release asset URL and SHA-256 (`89220a7865076b342892f98865f3499fb7c4cfd673159e89d352c360fd014c6a`), reject oversized or mismatched downloads, and expose a separate button to run the verified installer. The downloaded file's Authenticode signature was valid with Nefarius as signer during development. PadBridge never silently installs a kernel driver.
