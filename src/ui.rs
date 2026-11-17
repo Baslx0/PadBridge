@@ -129,6 +129,18 @@ pub fn button_grid(ui: &mut egui::Ui, pressed: impl Fn(Button) -> bool) {
             }
         });
     }
+    ui.horizontal_wrapped(|ui| {
+        for (button, label) in [
+            (Button::LeftThumb, "L3 / LS"),
+            (Button::RightThumb, "R3 / RS"),
+        ] {
+            let active = pressed(button);
+            ui.label(
+                RichText::new(format!("{} {label}", if active { "●" } else { "○" }))
+                    .color(if active { GREEN } else { MUTED }),
+            );
+        }
+    });
 }
 
 fn layout_button(p: &egui::Painter, center: Pos2, radius: f32, active: bool) {
@@ -338,13 +350,39 @@ pub fn controller_layout(
         );
     }
 
-    for (x, y, ax, ay, invert) in [
-        (-87.0, 213.0, axes[0], axes[1], mapping.invert_left_y),
-        (87.0, 213.0, axes[2], axes[3], mapping.invert_right_y),
+    for (x, y, ax, ay, invert, click) in [
+        (
+            -87.0,
+            213.0,
+            axes[0],
+            axes[1],
+            mapping.invert_left_y,
+            Button::LeftThumb,
+        ),
+        (
+            87.0,
+            213.0,
+            axes[2],
+            axes[3],
+            mapping.invert_right_y,
+            Button::RightThumb,
+        ),
     ] {
         let center = at(x, y);
-        p.circle_filled(center, 33.0 * scale, Color32::from_rgb(29, 37, 49));
-        p.circle_stroke(center, 33.0 * scale, Stroke::new(2.0_f32, MUTED));
+        p.circle_filled(
+            center,
+            33.0 * scale,
+            if pressed(click) {
+                Color32::from_rgb(35, 112, 83)
+            } else {
+                Color32::from_rgb(29, 37, 49)
+            },
+        );
+        p.circle_stroke(
+            center,
+            33.0 * scale,
+            Stroke::new(2.0_f32, if pressed(click) { GREEN } else { MUTED }),
+        );
         let dot = Pos2::new(
             center.x + mapping.axis(ax, false) * 20.0 * scale,
             center.y - mapping.axis(ay, invert) * 20.0 * scale,
@@ -364,7 +402,12 @@ pub fn controller_layout(
         FontId::proportional(text_size),
         if ps { Color32::WHITE } else { MUTED },
     );
-    ui.label(RichText::new("Lit controls are pressed · stick dots move with input").color(MUTED));
+    ui.label(
+        RichText::new(
+            "Lit controls are pressed, including L3/R3 stick clicks · stick dots move with input",
+        )
+        .color(MUTED),
+    );
 }
 
 pub fn trigger(ui: &mut egui::Ui, label: &str, value: f32, mapping: &Mapping) {
