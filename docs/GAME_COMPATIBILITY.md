@@ -9,7 +9,7 @@ PadBridge can create a virtual Xbox 360 controller from a selected Sony HID cont
 3. The dashboard shows **Starting** while VIIPER attaches the device. It shows **Active** and an XInput slot once Windows detects the controller. Keep PadBridge open while playing.
 4. Start GTA V after output is active. Click **Stop Xbox output** when finished. Output also stops when Sony input is lost.
 
-The VIIPER server and USB/IP driver were observed creating an Xbox 360 device on this PC, and XInput slot 0 became available in an independent probe. GTA V has not yet been verified with the new PadBridge build. The physical controller may also be visible to games and could cause duplicate input.
+The VIIPER server and USB/IP driver created an Xbox 360 device on this PC, and XInput slot 0 became available in an independent probe. The user then confirmed PadBridge's Xbox output works in GTA V through Epic/Rockstar. This is one hardware and game setup, so other configurations still need testing. The physical controller may also be visible to games and could cause duplicate input.
 
 ## Alternative Steam Input path
 

@@ -131,6 +131,242 @@ pub fn button_grid(ui: &mut egui::Ui, pressed: impl Fn(Button) -> bool) {
     }
 }
 
+fn layout_button(p: &egui::Painter, center: Pos2, radius: f32, active: bool) {
+    p.circle_filled(
+        center,
+        radius,
+        if active {
+            Color32::from_rgb(35, 112, 83)
+        } else {
+            Color32::from_rgb(39, 49, 64)
+        },
+    );
+    p.circle_stroke(
+        center,
+        radius,
+        Stroke::new(2.0, if active { GREEN } else { MUTED }),
+    );
+}
+
+fn face_symbol(p: &egui::Painter, center: Pos2, radius: f32, symbol: usize, color: Color32) {
+    let r = radius * 0.42;
+    let line = Stroke::new(2.0, color);
+    match symbol {
+        0 => {
+            let a = Pos2::new(center.x, center.y - r);
+            let b = Pos2::new(center.x - r, center.y + r);
+            let c = Pos2::new(center.x + r, center.y + r);
+            p.line_segment([a, b], line);
+            p.line_segment([b, c], line);
+            p.line_segment([c, a], line);
+        }
+        1 => {
+            p.rect_stroke(
+                egui::Rect::from_center_size(center, Vec2::splat(r * 1.7)),
+                1.0,
+                line,
+            );
+        }
+        2 => {
+            p.line_segment(
+                [
+                    Pos2::new(center.x - r, center.y - r),
+                    Pos2::new(center.x + r, center.y + r),
+                ],
+                line,
+            );
+            p.line_segment(
+                [
+                    Pos2::new(center.x - r, center.y + r),
+                    Pos2::new(center.x + r, center.y - r),
+                ],
+                line,
+            );
+        }
+        _ => {
+            p.circle_stroke(center, r, line);
+        }
+    }
+}
+
+pub fn controller_layout(
+    ui: &mut egui::Ui,
+    axes: [f32; 4],
+    triggers: [f32; 2],
+    mapping: &Mapping,
+    pressed: &impl Fn(Button) -> bool,
+    extras: &[(&str, bool)],
+) {
+    let width = ui.available_width().min(560.0);
+    let scale = width / 560.0;
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, 300.0 * scale), egui::Sense::hover());
+    let p = ui.painter();
+    let at = |x: f32, y: f32| Pos2::new(rect.center().x + x * scale, rect.top() + y * scale);
+    let size = |w: f32, h: f32| Vec2::new(w * scale, h * scale);
+    let text_size = (12.0 * scale).max(10.0);
+    let body = Color32::from_rgb(49, 60, 76);
+    p.circle_filled(at(-184.0, 195.0), 76.0 * scale, body);
+    p.circle_filled(at(184.0, 195.0), 76.0 * scale, body);
+    p.rect_filled(
+        egui::Rect::from_center_size(at(0.0, 177.0), size(365.0, 174.0)),
+        64.0 * scale,
+        body,
+    );
+    p.rect_filled(
+        egui::Rect::from_center_size(at(0.0, 116.0), size(147.0, 58.0)),
+        9.0 * scale,
+        Color32::from_rgb(29, 37, 49),
+    );
+
+    for (x, label, active, pressure) in [
+        (
+            -166.0,
+            "L2",
+            mapping.trigger_active(triggers[0]),
+            triggers[0],
+        ),
+        (
+            166.0,
+            "R2",
+            mapping.trigger_active(triggers[1]),
+            triggers[1],
+        ),
+    ] {
+        let bar = egui::Rect::from_center_size(at(x, 20.0), size(108.0, 29.0));
+        p.rect_filled(bar, 7.0 * scale, Color32::from_rgb(38, 48, 62));
+        let fill = egui::Rect::from_min_size(
+            bar.min,
+            Vec2::new(bar.width() * pressure.clamp(0.0, 1.0), bar.height()),
+        );
+        p.rect_filled(fill, 7.0 * scale, if active { GREEN } else { ACCENT });
+        p.text(
+            bar.center(),
+            Align2::CENTER_CENTER,
+            label,
+            FontId::proportional(text_size),
+            Color32::WHITE,
+        );
+    }
+    for (x, label, active) in [
+        (-166.0, "L1", pressed(Button::LeftTrigger)),
+        (166.0, "R1", pressed(Button::RightTrigger)),
+    ] {
+        let r = egui::Rect::from_center_size(at(x, 55.0), size(106.0, 27.0));
+        p.rect_filled(
+            r,
+            7.0 * scale,
+            if active {
+                Color32::from_rgb(35, 112, 83)
+            } else {
+                Color32::from_rgb(38, 48, 62)
+            },
+        );
+        p.text(
+            r.center(),
+            Align2::CENTER_CENTER,
+            label,
+            FontId::proportional(text_size),
+            if active { GREEN } else { MUTED },
+        );
+    }
+
+    let touchpad = extras
+        .iter()
+        .find(|(name, _)| *name == "Touchpad")
+        .is_some_and(|(_, active)| *active);
+    let touch = egui::Rect::from_center_size(at(0.0, 116.0), size(132.0, 46.0));
+    p.rect_filled(
+        touch,
+        7.0 * scale,
+        if touchpad {
+            Color32::from_rgb(35, 112, 83)
+        } else {
+            Color32::from_rgb(30, 39, 52)
+        },
+    );
+    p.text(
+        touch.center(),
+        Align2::CENTER_CENTER,
+        "TOUCHPAD",
+        FontId::proportional(text_size),
+        if touchpad { GREEN } else { MUTED },
+    );
+    for (x, label, active) in [
+        (-92.0, "SHARE", pressed(Button::Select)),
+        (92.0, "OPTIONS", pressed(Button::Start)),
+    ] {
+        p.text(
+            at(x, 153.0),
+            Align2::CENTER_CENTER,
+            label,
+            FontId::proportional(text_size),
+            if active { GREEN } else { MUTED },
+        );
+    }
+
+    for (x, y, button) in [
+        (-197.0, 139.0, Button::DPadUp),
+        (-197.0, 191.0, Button::DPadDown),
+        (-223.0, 165.0, Button::DPadLeft),
+        (-171.0, 165.0, Button::DPadRight),
+    ] {
+        p.rect_filled(
+            egui::Rect::from_center_size(at(x, y), size(23.0, 23.0)),
+            4.0 * scale,
+            if pressed(button) {
+                GREEN
+            } else {
+                Color32::from_rgb(30, 39, 52)
+            },
+        );
+    }
+    for (x, y, button, symbol) in [
+        (190.0, 136.0, Button::North, 0),
+        (164.0, 163.0, Button::West, 1),
+        (190.0, 190.0, Button::South, 2),
+        (216.0, 163.0, Button::East, 3),
+    ] {
+        let active = pressed(button);
+        let center = at(x, y);
+        layout_button(p, center, 20.0 * scale, active);
+        face_symbol(
+            p,
+            center,
+            20.0 * scale,
+            symbol,
+            if active { Color32::WHITE } else { MUTED },
+        );
+    }
+
+    for (x, y, ax, ay, invert) in [
+        (-87.0, 213.0, axes[0], axes[1], mapping.invert_left_y),
+        (87.0, 213.0, axes[2], axes[3], mapping.invert_right_y),
+    ] {
+        let center = at(x, y);
+        p.circle_filled(center, 33.0 * scale, Color32::from_rgb(29, 37, 49));
+        p.circle_stroke(center, 33.0 * scale, Stroke::new(2.0, MUTED));
+        let dot = Pos2::new(
+            center.x + mapping.axis(ax, false) * 20.0 * scale,
+            center.y - mapping.axis(ay, invert) * 20.0 * scale,
+        );
+        p.circle_filled(dot, 9.0 * scale, ACCENT);
+    }
+    let ps = extras
+        .iter()
+        .find(|(name, _)| *name == "PS")
+        .is_some_and(|(_, active)| *active)
+        || pressed(Button::Mode);
+    layout_button(p, at(0.0, 181.0), 16.0 * scale, ps);
+    p.text(
+        at(0.0, 181.0),
+        Align2::CENTER_CENTER,
+        "PS",
+        FontId::proportional(text_size),
+        if ps { Color32::WHITE } else { MUTED },
+    );
+    ui.label(RichText::new("Lit controls are pressed · stick dots move with input").color(MUTED));
+}
+
 pub fn trigger(ui: &mut egui::Ui, label: &str, value: f32, mapping: &Mapping) {
     let normalized = value.clamp(0.0, 1.0);
     ui.horizontal(|ui| {
@@ -192,6 +428,10 @@ pub fn tester_panel(
             ui.label(RichText::new(format!("· {profile_name}")).color(MUTED));
         });
         ui.label(RichText::new("Live controller input · display transforms enabled").color(GREEN));
+    });
+    section(ui, "Controller view");
+    surface(ui, |ui| {
+        controller_layout(ui, axes, triggers, mapping, &pressed, extras)
     });
     section(ui, "Sticks");
     surface(ui, |ui| {

@@ -177,7 +177,22 @@ impl App {
                     Color32::YELLOW
                 }),
             );
-            ui.label(RichText::new("Select a Sony controller, then enable Xbox output for games that need XInput. VIIPER and USB/IP run locally.").color(ui::MUTED));
+            ui.label(RichText::new("1. Select a PlayStation controller  ·  2. Check it in Input tester  ·  3. Start Xbox output  ·  4. Open your game").color(ui::MUTED));
+            if self.output.active() {
+                ui.label(
+                    RichText::new("Ready for games. Keep PadBridge open while playing.")
+                        .color(ui::GREEN),
+                );
+            } else if !self.output.busy()
+                && !self
+                    .current_key(keys)
+                    .is_some_and(|key| self.sony.devices.contains_key(&key))
+            {
+                ui.label(
+                    RichText::new("Select a Sony controller below to enable Xbox output.")
+                        .color(ui::MUTED),
+                );
+            }
             if self.output.busy() {
                 if let Some(slot) = self.output.slot {
                     ui.label(format!("XInput slot {slot}"));

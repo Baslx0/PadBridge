@@ -1,23 +1,33 @@
 # PadBridge
 
-PadBridge v0.2.0 preview is a local Windows controller monitor built with Rust, egui, gilrs, and a read-only Sony HID fallback.
+PadBridge is an open source Windows app for using a PlayStation controller in games that expect an Xbox 360 controller. It shows live input and sends it to a virtual Xbox controller through [VIIPER](https://github.com/Alia5/VIIPER) and [usbip-win2](https://github.com/vadimgrn/usbip-win2). Everything runs on your PC; there is no account, subscription, or remote server.
 
-## Working features
+## Get the Windows app
 
-- Lists usable gamepads exposed by gilrs. A Sony HID fallback reads known DualSense and DualShock 4 USB/Bluetooth input reports when Windows Gaming Input does not expose them through gilrs.
-- Live button, stick, and trigger tester. Battery is shown only when the backend reports it; Sony HID fallback currently shows Unavailable.
-- Dark navigation with Controllers, Input tester, Profiles, and About & settings.
-- Local profiles with create, duplicate, rename, select, delete, restore defaults, deadzone, Y inversion, and trigger threshold settings. These change the tester display only.
-- Versioned JSON profiles at `%LOCALAPPDATA%\PadBridge\profiles.json`; invalid files remain untouched while defaults load.
+1. Open the [PadBridge Releases](https://github.com/Baslx0/PadBridge/releases) page and download the latest `PadBridge-v*-windows-x64.zip`.
+2. Extract the ZIP, then run `PadBridge.exe` from the extracted folder.
+3. Connect a DualSense, DualSense Edge, or DualShock 4 by Bluetooth or USB. Select it on the **Controllers** page.
+4. Open **Input tester** to check your buttons, sticks, triggers, and the live controller drawing.
+5. Select **Start Xbox output** before opening your game. On first use, PadBridge may offer the bundled, verified USB/IP driver installer. Complete Windows setup, then start output again. Wait for **Active** and an XInput slot. Keep PadBridge open while playing.
 
-## Run
+For detailed setup and troubleshooting, read [Getting started](docs/GETTING_STARTED.md) and [Game compatibility](docs/GAME_COMPATIBILITY.md). The ZIP includes the third party licenses and VIIPER source archive.
 
-Use `cargo run` or `cargo build --release` on Windows 11 with the Rust MSVC toolchain and C++ build tools. The release executable is `target\release\padbridge.exe`.
+## Build from source
 
-## Limitations
+On Windows 10/11 x64, install [Rust with the MSVC toolchain](https://rust-lang.org/tools/install/) and the Visual Studio C++ build tools. Clone this repository using its **Code** button, open PowerShell in the clone, and run:
 
-Sony HID support covers official Sony vendor ID `054C` with DualSense (`0CE6`), DualSense Edge (`0DF2`), and DualShock 4 (`05C4`, `09CC`) report layouts. The connected DualSense Bluetooth controller was detected locally; PS4 and USB paths have parser tests but still need hardware verification. Other vendors remain limited to gilrs. Virtual Xbox output uses the maintained VIIPER server and usbip-win2 driver; GTA V compatibility still needs a live game test. PadBridge includes a hash-verified USB/IP installer for the user to run. No game remapping, automatic driver installation, Bluetooth pairing, or reliable per-unit identity for gilrs-only identical controllers. No cloud account or telemetry.
+```powershell
+cargo build --release --locked
+```
 
-See [architecture](docs/ARCHITECTURE.md), [features](docs/FEATURES.md), [QA](docs/QA.md), and [security](docs/SECURITY.md).
+The executable is `target\release\padbridge.exe`. To make the same ZIP used by releases, run `powershell -NoProfile -File .\scripts\package.ps1 -SkipBuild`; it writes a ZIP and SHA-256 file under `dist\`.
 
-Game use: PadBridge can create virtual Xbox 360 output from Sony HID input through VIIPER when usbip-win2 is installed. For GTA V through Epic/Rockstar over Bluetooth, see [game compatibility](docs/GAME_COMPATIBILITY.md) for setup and limits.
+## Features and limits
+
+- Detects supported Sony HID controllers even when Windows Gaming Input does not expose them through gilrs. Other controllers use gilrs.
+- Live controller view and tester, local profiles, deadzones, Y-axis inversion, and trigger thresholds.
+- Virtual Xbox 360 output for selected Sony HID controllers. A signed Windows USB/IP kernel driver must be installed once with Windows approval. PadBridge bundles its installer and checks its SHA-256 hash.
+- The user has confirmed GTA V through Epic/Rockstar working with the current virtual output setup. Other games and hardware configurations need testing.
+- No automatic Bluetooth pairing, game-specific remapping, or reliable per-unit identity for identical gilrs-only controllers. Profile adjustments currently affect the tester display, not Xbox output.
+
+See [Architecture](docs/ARCHITECTURE.md), [Features](docs/FEATURES.md), [QA](docs/QA.md), [Security](docs/SECURITY.md), and [Roadmap](docs/ROADMAP.md).

@@ -1,5 +1,7 @@
 # Security
 
-PadBridge uses no telemetry, cloud account, driver installation, background service, or elevation. Profile data remains under `%LOCALAPPDATA%`. Invalid profile files are preserved and defaults load. The Sony HID fallback is read-only: it sends no feature, output, rumble, or lightbar reports.
+PadBridge uses no telemetry, cloud account, or remote service. Profiles remain under `%LOCALAPPDATA%`. Invalid profile files are preserved while defaults load. The Sony HID input path reads controller reports; it does not send feature, rumble, or lightbar reports.
 
-Dependencies: serde and serde_json serialize local profiles; hidapi 2.6.7 provides safe Rust access to the native HID API and builds its C wrapper from source. PadBridge contains no `unsafe` blocks or bundled controller executables. Review native dependencies and driver provenance before distribution. No code or binary from the referenced DS4Windows archives was executed or copied into PadBridge.
+Virtual output launches a bundled VIIPER server locally and communicates with it over loopback. PadBridge also bundles the signed usbip-win2 installer. Both bundled executables have pinned SHA-256 checks and are verified before use. Installing the Windows kernel driver requires an explicit user action and Windows approval; it is not installed silently. The installer can restart USB hubs.
+
+The distribution ZIP includes the third party license notices and the corresponding VIIPER source archive. See [Game compatibility](GAME_COMPATIBILITY.md#bundled-components) for upstream component versions. No code or binary from the referenced DS4Windows archives was copied into PadBridge.
