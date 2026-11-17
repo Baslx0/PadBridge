@@ -16,8 +16,8 @@ Use `cargo run` or `cargo build --release` on Windows 11 with the Rust MSVC tool
 
 ## Limitations
 
-Sony HID support covers official Sony vendor ID `054C` with DualSense (`0CE6`), DualSense Edge (`0DF2`), and DualShock 4 (`05C4`, `09CC`) report layouts. The connected DualSense Bluetooth controller was detected locally; PS4 and USB paths have parser tests but still need hardware verification. Other vendors remain limited to gilrs. Virtual Xbox output requires ViGEmBus and has not yet been verified with GTA V on this PC. PadBridge includes a hash-verified official installer for the user to run. No game remapping, automatic driver installation, Bluetooth pairing, or reliable per-unit identity for gilrs-only identical controllers. No cloud account or telemetry.
+Sony HID support covers official Sony vendor ID `054C` with DualSense (`0CE6`), DualSense Edge (`0DF2`), and DualShock 4 (`05C4`, `09CC`) report layouts. The connected DualSense Bluetooth controller was detected locally; PS4 and USB paths have parser tests but still need hardware verification. Other vendors remain limited to gilrs. Virtual Xbox output uses the maintained VIIPER server and usbip-win2 driver; GTA V compatibility still needs a live game test. PadBridge includes a hash-verified USB/IP installer for the user to run. No game remapping, automatic driver installation, Bluetooth pairing, or reliable per-unit identity for gilrs-only identical controllers. No cloud account or telemetry.
 
 See [architecture](docs/ARCHITECTURE.md), [features](docs/FEATURES.md), [QA](docs/QA.md), and [security](docs/SECURITY.md).
 
-Game use: PadBridge can create virtual Xbox 360 output from Sony HID input when ViGEmBus is installed separately. For GTA V through Epic/Rockstar over Bluetooth, see [game compatibility](docs/GAME_COMPATIBILITY.md) for setup and limits.
+Game use: PadBridge can create virtual Xbox 360 output from Sony HID input through VIIPER when usbip-win2 is installed. For GTA V through Epic/Rockstar over Bluetooth, see [game compatibility](docs/GAME_COMPATIBILITY.md) for setup and limits.

@@ -165,6 +165,8 @@ impl App {
             ui.label(
                 RichText::new(if self.output.active() {
                     "Virtual Xbox controller active"
+                } else if self.output.busy() {
+                    "Starting virtual Xbox controller..."
                 } else {
                     "Virtual Xbox controller off"
                 })
@@ -175,8 +177,8 @@ impl App {
                     Color32::YELLOW
                 }),
             );
-            ui.label(RichText::new("Select a Sony controller, then enable Xbox output for games that need XInput. ViGEmBus is required.").color(ui::MUTED));
-            if self.output.active() {
+            ui.label(RichText::new("Select a Sony controller, then enable Xbox output for games that need XInput. VIIPER and USB/IP run locally.").color(ui::MUTED));
+            if self.output.busy() {
                 if let Some(slot) = self.output.slot {
                     ui.label(format!("XInput slot {slot}"));
                 }
@@ -197,10 +199,11 @@ impl App {
             if let Some(error) = &self.output.error {
                 ui.colored_label(Color32::LIGHT_RED, error);
             }
-            if self.output.downloading() {
+            if self.output.downloading() || (self.output.busy() && !self.output.active()) {
                 ui.spinner();
             }
             if let Some(path) = &self.output.installer {
+                ui.label(RichText::new("Driver installation can briefly restart USB devices. Save active work first.").color(ui::MUTED));
                 if ui.button("Open verified driver installer").clicked() {
                     if let Err(error) = std::process::Command::new(path).spawn() {
                         self.output.error = Some(format!("Could not open installer: {error}"));
@@ -501,7 +504,9 @@ impl App {
         });
         ui::section(ui, "Game compatibility");
         ui::surface(ui, |ui| {
-            ui.label("Virtual Xbox output is available for Sony HID controllers when ViGEmBus is installed.");
+            ui.label(
+                "Virtual Xbox output uses VIIPER and a USB/IP driver for Sony HID controllers.",
+            );
             ui.label(RichText::new("Select the Sony controller on the Controllers page and start Xbox output. Steam Input remains another option.").color(ui::MUTED));
         });
         ui::section(ui, "Output");
@@ -510,12 +515,14 @@ impl App {
                 "Virtual Xbox controller: {}",
                 if self.output.active() {
                     "Active"
+                } else if self.output.busy() {
+                    "Starting"
                 } else {
                     "Off"
                 }
             ));
             ui.label(
-                RichText::new("If ViGEmBus is missing, PadBridge prepares its bundled installer. Installation requires your action.")
+                RichText::new("If USB/IP is missing, PadBridge prepares its bundled installer. Installation requires your action.")
                     .color(ui::MUTED),
             );
         });
@@ -535,7 +542,7 @@ impl eframe::App for App {
         }
         self.sony.poll();
         self.output.poll();
-        if !self.output.active() {
+        if !self.output.busy() {
             self.sony.set_output(None);
         }
         let keys = self.connected();

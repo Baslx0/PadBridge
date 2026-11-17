@@ -34,3 +34,7 @@ On a ViGEmBus `BusNotFound` error, download the original Nefarius 1.22.0 install
 ## 2026-11-17 — Bundled installer and independent output thread
 
 Embed the unmodified signed ViGEmBus 1.22.0 setup in the PadBridge executable, with its BSD-3-Clause notice. Verify its pinned SHA-256 before extracting it when the bus is missing. This replaces the runtime download while still requiring a user to start Windows installation. Move virtual Xbox updates onto a dedicated thread fed directly from the Sony HID reader; window focus and UI repaint frequency must not interrupt game input. Show the assigned XInput slot for diagnosis. VIIPER was reviewed, but Windows still needs the signed `usbip-win2` kernel driver and its main project uses GPL-3.0.
+
+## 2026-11-17 — Maintained VIIPER output
+
+The user prefers maintained upstream support, so replace ViGEmBus output with VIIPER 0.9.0 and usbip-win2 0.9.8.1. Run the GPL-3.0 VIIPER server as a separate localhost process; use its MIT Rust client in PadBridge. Include the server's license and corresponding source archive with the distribution. Embed the signed release files and pin their SHA-256 hashes. The USB/IP driver still requires an explicit Windows installation. Start and attach the device on a worker thread to avoid UI freezing; wait for a newly available XInput slot before reporting success. A direct local probe observed VIIPER and usbip-win2 attaching an Xbox 360 controller and exposing XInput slot 0. GTA V gameplay still requires a live test.
