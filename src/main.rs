@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 mod core;
+mod sony;
 mod ui;
 
 use core::{
@@ -9,6 +10,7 @@ use core::{
 };
 use eframe::egui::{self, Color32, RichText};
 use gilrs::{Axis, Gilrs, PowerInfo};
+use sony::SonyBackend;
 use std::{path::PathBuf, time::Duration};
 
 fn power_label(power: PowerInfo) -> String {
@@ -49,6 +51,7 @@ impl Page {
 
 struct App {
     gilrs: Option<Gilrs>,
+    sony: SonyBackend,
     error: Option<String>,
     store: Store,
     path: PathBuf,
@@ -67,6 +70,7 @@ impl Default for App {
         };
         Self {
             gilrs,
+            sony: SonyBackend::new(),
             error,
             store,
             path,
@@ -85,15 +89,26 @@ impl App {
         });
     }
     fn connected(&self) -> Vec<String> {
-        self.gilrs
-            .as_ref()
-            .map(|g| {
-                g.gamepads()
-                    .filter(|(_, p)| p.is_connected())
-                    .map(|(_, p)| format!("{}::{:?}", p.name(), p.uuid()))
-                    .collect()
-            })
-            .unwrap_or_default()
+        let mut keys = Vec::new();
+        let mut gilrs_names = std::collections::HashMap::<String, usize>::new();
+        if let Some(g) = self.gilrs.as_ref() {
+            for (_, pad) in g.gamepads().filter(|(_, pad)| pad.is_connected()) {
+                keys.push(format!("{}::{:?}", pad.name(), pad.uuid()));
+                *gilrs_names.entry(pad.name().to_string()).or_default() += 1;
+            }
+        }
+        let mut sony_devices: Vec<_> = self.sony.devices.values().collect();
+        sony_devices.sort_by(|a, b| a.key.cmp(&b.key));
+        for device in sony_devices {
+            let matched = gilrs_names.entry(device.name.clone()).or_default();
+            if *matched > 0 {
+                *matched -= 1;
+            } else {
+                keys.push(device.key.clone());
+            }
+        }
+        keys.sort();
+        keys
     }
     fn current_key(&self, keys: &[String]) -> Option<String> {
         self.selected
@@ -152,28 +167,68 @@ impl App {
                 "Connect a USB or Bluetooth gamepad supported by Windows.",
             );
             ui.label(
-                RichText::new("Paired Bluetooth devices are shown only when usable through gilrs.")
+                RichText::new("Sony HID and gilrs devices appear while usable input is available.")
                     .color(ui::MUTED),
             );
             return;
         }
         let current = self.current_key(keys);
         ui::section(ui, "Devices");
-        let Some(g) = self.gilrs.as_ref() else {
-            return;
-        };
-        for (id, pad) in g.gamepads() {
-            if !pad.is_connected() {
-                continue;
+        if let Some(g) = self.gilrs.as_ref() {
+            for (id, pad) in g.gamepads() {
+                if !pad.is_connected() {
+                    continue;
+                }
+                let key = format!("{}::{:?}", pad.name(), pad.uuid());
+                let selected = current.as_ref() == Some(&key);
+                ui::surface(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.vertical(|ui| {
+                            ui.label(RichText::new(pad.name()).size(18.0).strong());
+                            ui.label(
+                                RichText::new(format!("Connected · gilrs ID {id:?}"))
+                                    .color(ui::GREEN),
+                            );
+                        });
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            if ui
+                                .button(if selected { "Viewing" } else { "View" })
+                                .clicked()
+                            {
+                                self.selected = Some(key.clone());
+                            }
+                        });
+                    });
+                    ui.add_space(5.0);
+                    ui.horizontal_wrapped(|ui| {
+                        ui.label(RichText::new(power_label(pad.power_info())).color(ui::MUTED));
+                        ui.label(
+                            RichText::new(format!(
+                                "Profile: {}",
+                                self.store.device(&key).active().name
+                            ))
+                            .color(ui::MUTED),
+                        );
+                    });
+                });
+                ui.add_space(9.0);
             }
-            let key = format!("{}::{:?}", pad.name(), pad.uuid());
+        }
+        for device in self
+            .sony
+            .devices
+            .values()
+            .filter(|device| keys.contains(&device.key))
+        {
+            let key = device.key.clone();
             let selected = current.as_ref() == Some(&key);
             ui::surface(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.vertical(|ui| {
-                        ui.label(RichText::new(pad.name()).size(18.0).strong());
+                        ui.label(RichText::new(&device.name).size(18.0).strong());
                         ui.label(
-                            RichText::new(format!("Connected · gilrs ID {id:?}")).color(ui::GREEN),
+                            RichText::new(format!("Connected · Sony HID · {}", device.connection))
+                                .color(ui::GREEN),
                         );
                     });
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -187,7 +242,7 @@ impl App {
                 });
                 ui.add_space(5.0);
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new(power_label(pad.power_info())).color(ui::MUTED));
+                    ui.label(RichText::new("Battery unavailable").color(ui::MUTED));
                     ui.label(
                         RichText::new(format!(
                             "Profile: {}",
@@ -232,6 +287,23 @@ impl App {
             );
             return;
         };
+        let profile = self.store.device(&key).active().clone();
+        if let Some(device) = self.sony.devices.get(&key) {
+            let input = &device.input;
+            ui::tester_panel(
+                ui,
+                &device.name,
+                &profile.name,
+                &profile.mapping,
+                input.axes,
+                input.triggers,
+                (
+                    |button| input.pressed(button),
+                    &[("PS", input.buttons[12]), ("Touchpad", input.buttons[13])],
+                ),
+            );
+            return;
+        }
         let Some(g) = self.gilrs.as_ref() else {
             return;
         };
@@ -241,47 +313,20 @@ impl App {
         else {
             return;
         };
-        let profile = self.store.device(&key).active().clone();
-        ui::surface(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(pad.name()).size(19.0).strong());
-                ui.label(RichText::new(format!("· {}", profile.name)).color(ui::MUTED));
-            });
-            ui.label(
-                RichText::new("Input from Windows · display transforms enabled").color(ui::GREEN),
-            );
-        });
-        ui::section(ui, "Sticks");
-        ui::surface(ui, |ui| {
-            ui.horizontal_wrapped(|ui| {
-                ui::stick(
-                    ui,
-                    "Left stick",
-                    pad.value(Axis::LeftStickX),
-                    pad.value(Axis::LeftStickY),
-                    &profile.mapping,
-                    profile.mapping.invert_left_y,
-                );
-                ui.add_space(24.0);
-                ui::stick(
-                    ui,
-                    "Right stick",
-                    pad.value(Axis::RightStickX),
-                    pad.value(Axis::RightStickY),
-                    &profile.mapping,
-                    profile.mapping.invert_right_y,
-                );
-            });
-        });
-        ui::section(ui, "Triggers");
-        ui::surface(ui, |ui| {
-            ui::trigger(ui, "Left", pad.value(Axis::LeftZ), &profile.mapping);
-            ui::trigger(ui, "Right", pad.value(Axis::RightZ), &profile.mapping);
-        });
-        ui::section(ui, "Buttons");
-        ui::surface(ui, |ui| ui::button_grid(ui, &pad));
-        ui.add_space(12.0);
-        ui.label(RichText::new("Deadzone, inversion, and threshold affect this tester only. Games receive the original controller input.").color(ui::MUTED));
+        ui::tester_panel(
+            ui,
+            pad.name(),
+            &profile.name,
+            &profile.mapping,
+            [
+                pad.value(Axis::LeftStickX),
+                pad.value(Axis::LeftStickY),
+                pad.value(Axis::RightStickX),
+                pad.value(Axis::RightStickY),
+            ],
+            [pad.value(Axis::LeftZ), pad.value(Axis::RightZ)],
+            (|button| pad.is_pressed(button), &[]),
+        );
     }
     fn profiles(&mut self, ui: &mut egui::Ui, keys: &[String]) {
         let Some(key) = self.current_key(keys) else {
@@ -431,6 +476,7 @@ impl eframe::App for App {
         if let Some(g) = self.gilrs.as_mut() {
             while g.next_event().is_some() {}
         }
+        self.sony.poll();
         let keys = self.connected();
         self.navigation(ctx, keys.len());
         egui::CentralPanel::default()
@@ -451,6 +497,9 @@ impl eframe::App for App {
                                 format!("Gamepad initialization failed: {error}"),
                             );
                             return;
+                        }
+                        if let Some(error) = &self.sony.error {
+                            ui.colored_label(Color32::LIGHT_RED, error);
                         }
                         if let Some(notice) = &self.notice {
                             ui.colored_label(ui::MUTED, notice);

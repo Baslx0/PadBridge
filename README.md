@@ -1,20 +1,21 @@
 # PadBridge
 
-PadBridge v0.2.0 preview is a local Windows controller monitor built with Rust, egui, and gilrs.
+PadBridge v0.2.0 preview is a local Windows controller monitor built with Rust, egui, gilrs, and a read-only Sony HID fallback.
 
 ## Working features
 
-- Lists connected, usable gamepads exposed by gilrs and shows live buttons, axes, and device-reported power information.
-- Dark navigation with Dashboard, Tester, Profiles, and Settings.
-- Per-controller local profiles with create, duplicate, rename, select, delete, restore defaults, deadzone, Y inversion, and trigger threshold settings. Tester transformations are display-only.
-- Versioned JSON profiles at `%LOCALAPPDATA%\PadBridge\profiles.json`; invalid files remain untouched and defaults load.
+- Lists usable gamepads exposed by gilrs. A Sony HID fallback reads known DualSense and DualShock 4 USB/Bluetooth input reports when Windows Gaming Input does not expose them through gilrs.
+- Live button, stick, and trigger tester. Battery is shown only when the backend reports it; Sony HID fallback currently shows Unavailable.
+- Dark navigation with Controllers, Input tester, Profiles, and About & settings.
+- Local profiles with create, duplicate, rename, select, delete, restore defaults, deadzone, Y inversion, and trigger threshold settings. These change the tester display only.
+- Versioned JSON profiles at `%LOCALAPPDATA%\PadBridge\profiles.json`; invalid files remain untouched while defaults load.
+
+## Run
+
+Use `cargo run` or `cargo build --release` on Windows 11 with the Rust MSVC toolchain and C++ build tools. The release executable is `target\release\padbridge.exe`.
 
 ## Limitations
 
-Discovery is limited to gilrs. Paired Bluetooth devices that are not usable gamepads are not listed. A device's gilrs UUID may identify a model rather than a unique physical unit, so identical controllers can share a profile. Battery values are shown only when gilrs reports them. Xbox virtual output, game remapping, native Windows inventory, and vendor features are unavailable. No driver is installed.
+Sony HID support covers official Sony vendor ID `054C` with DualSense (`0CE6`), DualSense Edge (`0DF2`), and DualShock 4 (`05C4`, `09CC`) report layouts. The connected DualSense Bluetooth controller was detected locally; PS4 and USB paths have parser tests but still need hardware verification. Other vendors remain limited to gilrs. No game remapping, Xbox emulation, driver installation, Bluetooth pairing, or reliable per-unit identity for gilrs-only identical controllers. No cloud account or telemetry.
 
-Run with `cargo run`; release build with `cargo build --release`. Windows 11 and a Rust toolchain with MSVC build tools are required. See [architecture](docs/ARCHITECTURE.md), [features](docs/FEATURES.md), [QA](docs/QA.md), and [security](docs/SECURITY.md).
-
-## Interface update
-
-The controller list is now the starting point. Select a device, open its focused input tester, or edit its local profile. The tester shows stick position, deadzone circles, trigger levels, and live buttons. The selected controller remains in focus across pages while connected. Empty and initialization-error states explain what the app can detect. Profile changes remain display-only.
+See [architecture](docs/ARCHITECTURE.md), [features](docs/FEATURES.md), [QA](docs/QA.md), and [security](docs/SECURITY.md).

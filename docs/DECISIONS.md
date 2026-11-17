@@ -14,3 +14,7 @@ ViGEmBus is archived. No maintained, signed, suitably licensed driver and instal
 
 Sources: https://github.com/nefarius/ViGEmBus (archived 2023-11-02); https://learn.microsoft.com/en-us/windows-hardware/drivers/hid/buttons (VHF requires a kernel-mode HID source driver). VHF is a framework, not a ready-to-use user-mode virtual Xbox controller backend.
 
+
+## 2026-11-17 — Sony HID fallback
+
+Windows exposed a present DualSense HID interface and valid input reports while gilrs enumerated zero devices. Add read-only hidapi discovery for known Sony VID/PID values on a worker thread, retaining gilrs for other controllers. Parse only known report IDs and lengths; show no inferred battery values. SDL's PS4/PS5 HID drivers document the report offsets: https://github.com/libsdl-org/SDL/blob/main/src/joystick/hidapi/SDL_hidapi_ps4.c and https://github.com/libsdl-org/SDL/blob/main/src/joystick/hidapi/SDL_hidapi_ps5.c. hidapi API: https://docs.rs/hidapi/2.6.7/hidapi/. The provided DS4Windows archives were inspected as read-only references; no binaries or source were incorporated.

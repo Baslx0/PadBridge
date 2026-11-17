@@ -1,6 +1,6 @@
 use crate::core::mapping::Mapping;
 use eframe::egui::{self, Align2, Color32, FontId, Pos2, RichText, Stroke, Vec2};
-use gilrs::{Button, Gamepad};
+use gilrs::Button;
 
 pub const BG: Color32 = Color32::from_rgb(17, 21, 29);
 pub const PANEL: Color32 = Color32::from_rgb(25, 31, 41);
@@ -88,7 +88,7 @@ pub fn stick(ui: &mut egui::Ui, label: &str, x: f32, y: f32, mapping: &Mapping, 
     });
 }
 
-pub fn button_grid(ui: &mut egui::Ui, pad: &Gamepad<'_>) {
+pub fn button_grid(ui: &mut egui::Ui, pressed: impl Fn(Button) -> bool) {
     for row in [
         [
             (Button::North, "Triangle / Y"),
@@ -111,7 +111,7 @@ pub fn button_grid(ui: &mut egui::Ui, pad: &Gamepad<'_>) {
     ] {
         ui.horizontal_wrapped(|ui| {
             for (button, label) in row {
-                let active = pad.is_pressed(button);
+                let active = pressed(button);
                 egui::Frame::none()
                     .fill(if active {
                         Color32::from_rgb(33, 78, 61)
@@ -173,5 +173,78 @@ pub fn empty(ui: &mut egui::Ui, title: &str, detail: &str) {
         detail,
         FontId::proportional(14.0),
         MUTED,
+    );
+}
+
+pub fn tester_panel(
+    ui: &mut egui::Ui,
+    name: &str,
+    profile_name: &str,
+    mapping: &Mapping,
+    axes: [f32; 4],
+    triggers: [f32; 2],
+    buttons: (impl Fn(Button) -> bool, &[(&str, bool)]),
+) {
+    let (pressed, extras) = buttons;
+    surface(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(name).size(19.0).strong());
+            ui.label(RichText::new(format!("· {profile_name}")).color(MUTED));
+        });
+        ui.label(RichText::new("Live controller input · display transforms enabled").color(GREEN));
+    });
+    section(ui, "Sticks");
+    surface(ui, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            stick(
+                ui,
+                "Left stick",
+                axes[0],
+                axes[1],
+                mapping,
+                mapping.invert_left_y,
+            );
+            ui.add_space(24.0);
+            stick(
+                ui,
+                "Right stick",
+                axes[2],
+                axes[3],
+                mapping,
+                mapping.invert_right_y,
+            );
+        });
+    });
+    section(ui, "Triggers");
+    surface(ui, |ui| {
+        trigger(ui, "Left", triggers[0], mapping);
+        trigger(ui, "Right", triggers[1], mapping);
+    });
+    section(ui, "Buttons");
+    surface(ui, |ui| {
+        button_grid(ui, pressed);
+        ui.add_space(7.0);
+        ui.horizontal_wrapped(|ui| {
+            for (label, active) in [
+                ("L2", mapping.trigger_active(triggers[0])),
+                ("R2", mapping.trigger_active(triggers[1])),
+            ]
+            .into_iter()
+            .chain(extras.iter().copied())
+            {
+                let color = if active { GREEN } else { MUTED };
+                ui.label(
+                    RichText::new(format!("{} {label}", if active { "●" } else { "○" }))
+                        .color(color),
+                );
+            }
+        });
+    });
+    ui.add_space(12.0);
+    ui.label(
+        RichText::new(
+            "Profiles affect this tester only. Games receive the original controller input.",
+        )
+        .color(MUTED),
     );
 }
